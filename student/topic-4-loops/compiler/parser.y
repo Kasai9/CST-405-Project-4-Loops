@@ -1,3 +1,4 @@
+
 /* =========================================================================
  * CST-405  ·  TOPIC 4  ·  Compiling Loops
  * FILE: parser.y   —   Phase 2 — Syntax analysis
@@ -68,16 +69,24 @@ ASTNode* root = NULL;
 %token <str> ID
 %token INT PRINT
 %token RETURN
+
 /* --------------------------------------------------------------
  * TODO (Topic 4)
  * Declare the loop keywords: WHILE FOR BREAK.
  * -------------------------------------------------------------- */
+
+%token WHILE
+%token FOR BREAK  /* For loops and loop exits. */
+
+
 /* --------------------------------------------------------------
  * TODO (Topic 4)
  * Declare the two-character relational operator tokens: LE GE EQ NE.
  * (The single-character ones, < and >, arrive as character literals and
  *  need no %token declaration.)
  * -------------------------------------------------------------- */
+
+%token LE GE EQ NE
 
 /* NON-TERMINAL TYPES */
 %type <node> program stmt_list stmt decl assign expr print_stmt
@@ -89,6 +98,9 @@ ASTNode* root = NULL;
  * not know that $$ is an ASTNode*.  Add: while_stmt for_stmt
  * for_init for_cond for_update break_stmt
  * -------------------------------------------------------------- */
+
+%type <node> while_stmt
+%type <node> for_stmt for_init for_cond for_update break_stmt
 
 /* OPERATOR PRECEDENCE AND ASSOCIATIVITY
  * Listed from lowest to highest precedence.
@@ -109,6 +121,8 @@ ASTNode* root = NULL;
  * than + - * /, which is what makes  a + 1 < b * 2  parse as
  *   (a + 1) < (b * 2)  and not  a + (1 < b) * 2.
  * -------------------------------------------------------------- */
+
+%left '<' '>' LE GE EQ NE
 %left '+' '-'
 %left '*' '/'
 %right UMINUS              /* unary minus                            */
@@ -203,6 +217,9 @@ stmt:
     | assign
     | print_stmt
     | return_stmt
+    | while_stmt
+    | for_stmt
+    | break_stmt
 /* --------------------------------------------------------------
  * TODO (Topic 4)
  * A loop and a `break` are statements too.  Add them as alternatives:
@@ -220,6 +237,13 @@ stmt:
  * BREAK STATEMENT.  One rule, one action:
  *   break_stmt: BREAK ';' { $$ = createBreak(); } ;
  * -------------------------------------------------------------- */
+
+/* Exit the current loop. */
+break_stmt:
+    BREAK ';' {
+        $$ = createBreak();
+    }
+    ;
 
 /* DECLARATION - int x; or int arr[10]; */
 decl:
@@ -272,6 +296,43 @@ return_stmt:
  * because the `;` belongs to the for-header, not to the assignment.
  * -------------------------------------------------------------- */
 
+while_stmt:
+    WHILE '(' expr ')' stmt {
+        $$ = createWhile($3, $5);
+    }
+    ;
+
+/* A for loop has optional initialization, condition, and update clauses. */
+for_stmt:
+    FOR '(' for_init ';' for_cond ';' for_update ')' stmt {
+        $$ = createFor($3, $5, $7, $9);
+    }
+    ;
+
+/* The initialization assignment has no trailing semicolon. */
+for_init:
+    /* empty */ { $$ = NULL; }
+    | ID '=' expr {
+        $$ = createAssign($1, $3);
+        free($1);
+    }
+    ;
+
+/* An empty condition means the loop continues until break or return. */
+for_cond:
+    /* empty */ { $$ = NULL; }
+    | expr { $$ = $1; }
+    ;
+
+/* The update assignment has no trailing semicolon. */
+for_update:
+    /* empty */ { $$ = NULL; }
+    | ID '=' expr {
+        $$ = createAssign($1, $3);
+        free($1);
+    }
+    ;
+
 /* EXPRESSION RULES */
 expr:
     NUM {
@@ -308,6 +369,13 @@ expr:
  * == is 'e',  != is 'n'.  (See opText() in ast.c for the full table.)
  * A comparison yields 1 or 0 — there is no separate boolean type.
  * -------------------------------------------------------------- */
+       | expr '<' expr { $$ = createBinOp('<', $1, $3); }
+    | expr '>' expr { $$ = createBinOp('>', $1, $3); }
+    | expr LE expr  { $$ = createBinOp('l', $1, $3); }
+    | expr GE expr  { $$ = createBinOp('g', $1, $3); }
+    | expr EQ expr  { $$ = createBinOp('e', $1, $3); }
+    | expr NE expr  { $$ = createBinOp('n', $1, $3); }
+   
     | '-' expr %prec UMINUS {
         $$ = createBinOp('u', $2, NULL);  /* 'u' for unary minus */
     }

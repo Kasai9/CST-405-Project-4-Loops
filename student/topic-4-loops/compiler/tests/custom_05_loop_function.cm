@@ -1,0 +1,31 @@
+
+/*
+ * Test: While Loop With Function Calls
+ * Checks functions operating inside loops.
+ *
+ * Expected output:
+ * 30
+ * 5
+ */
+
+int square(int x) {
+    return x * x;
+}
+
+int main() {
+    int i;
+    int sum;
+
+    i = 1;
+    sum = 0;
+
+    while (i <= 4) {
+        sum = sum + square(i);
+        i = i + 1;
+    }
+
+    print(sum);
+    print(i);
+
+    return 0;
+}

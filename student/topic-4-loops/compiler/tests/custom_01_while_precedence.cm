@@ -1,0 +1,25 @@
+
+/*
+ * Test: While Loop and Order of Operations
+ * Expected output:
+ * 40
+ * 20
+ */
+
+int main() {
+    int i;
+    int sum;
+
+    i = 0;
+    sum = 0;
+
+    while (i < 5) {
+        sum = sum + 2 + 3 * i;
+        i = i + 1;
+    }
+
+    print(sum);
+    print((2 + 3) * 4);
+
+    return 0;
+}

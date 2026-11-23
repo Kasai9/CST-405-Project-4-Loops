@@ -54,6 +54,7 @@
 %%
 
 "int"           { return INT; }
+"float"         { return FLOAT; }
 "print"         { return PRINT; }
 
 [a-zA-Z_][a-zA-Z0-9_]* {
@@ -61,6 +62,11 @@
     return ID;
 }
 
+[0-9]+\.[0-9]+  {
+    yylval.fnum = atof(yytext);
+    return FLOAT_NUM;
+}
+  
 [0-9]+          {
     yylval.num = atoi(yytext);
     return NUM;

@@ -1,3 +1,4 @@
+
 /* =========================================================================
  * CST-405  ·  TOPIC 4  ·  Compiling Loops
  * FILE: scanner.l   —   Phase 1 — Lexical analysis
@@ -55,14 +56,19 @@
 "int"           { return INT; }
 "print"         { return PRINT; }
 "return"        { return RETURN; }
+"while"         { return WHILE; }
     /* --------------------------------------------------------------
      * TODO (Topic 4)
      * Return WHILE and FOR for the loop keywords.
      * -------------------------------------------------------------- */
+    /* Recognizes the for loop keyword. */
+"for"           { return FOR; }
     /* --------------------------------------------------------------
      * TODO (Topic 4)
      * Return BREAK for the `break` keyword.
      * -------------------------------------------------------------- */
+    /* Recognizes the break statement. */
+"break"         { return BREAK; }
 
 [a-zA-Z_][a-zA-Z0-9_]* {
     yylval.str = strdup(yytext);
@@ -82,6 +88,11 @@
      * match `<` and then `=` and your parser would see two tokens, not one.
      * -------------------------------------------------------------- */
 
+"<="            { return LE; }
+">="            { return GE; }
+"=="            { return EQ; }
+"!="            { return NE; }
+
 "+"             { return '+'; }
 "-"             { return '-'; }
 "*"             { return '*'; }
@@ -91,6 +102,8 @@
      * TODO (Topic 4)
      * Return the single-character relational operators.
      * -------------------------------------------------------------- */
+"<"             { return '<'; }
+">"             { return '>'; }
 
 "="             { return '='; }
 

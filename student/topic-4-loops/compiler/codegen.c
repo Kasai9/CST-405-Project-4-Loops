@@ -420,6 +420,13 @@ static const char* mnemonicFor(TACOp op) {
  * Each writes 1 or 0 into the destination register, which is exactly
  * the 1/0 our language says a comparison produces.
  * -------------------------------------------------------------- */
+        /* Return the MIPS comparison instructions. */
+        case TAC_LT: return "slt";
+        case TAC_GT: return "sgt";
+        case TAC_LE: return "sle";
+        case TAC_GE: return "sge";
+        case TAC_EQ: return "seq";
+        case TAC_NE: return "sne";
         default:      return NULL;
     }
 }
@@ -526,6 +533,9 @@ void generateMIPSFromTAC(const char* filename) {
  * two operands in, one register out — so just add their case labels
  * to this group.  Six labels, no new code.
  * -------------------------------------------------------------- */
+            /* Comparisons use the same instruction format as arithmetic. */
+            case TAC_LT: case TAC_GT: case TAC_LE:
+            case TAC_GE: case TAC_EQ: case TAC_NE:
             {
                 int a = operandReg(i->arg1);
                 int b = operandReg(i->arg2);
@@ -576,6 +586,31 @@ void generateMIPSFromTAC(const char* filename) {
  * wrong answers.  Call flushRegisters() — and think about WHERE in the
  * branch cases it has to go relative to reading the condition register.
  * -------------------------------------------------------------- */
+            /* Save cached values before labels and jumps. */
+            case TAC_LABEL:
+                flushRegisters("at label");
+                fprintf(out, "%s:\n", i->result);
+                break;
+
+            case TAC_GOTO:
+                flushRegisters("before jump");
+                fprintf(out, "    j    %s\n", i->arg1);
+                break;
+
+            /* Load the condition before clearing the register cache. */
+            case TAC_IF_FALSE: {
+                int r = operandReg(i->arg1);
+                flushRegisters("before conditional branch");
+                fprintf(out, "    beq  $t%d, $zero, %s\n", r, i->arg2);
+                break;
+            }
+
+            case TAC_IF_TRUE: {
+                int r = operandReg(i->arg1);
+                flushRegisters("before conditional branch");
+                fprintf(out, "    bne  $t%d, $zero, %s\n", r, i->arg2);
+                break;
+            }
 
             /* ---------- calls --------------------------------------------- */
             case TAC_ARG:

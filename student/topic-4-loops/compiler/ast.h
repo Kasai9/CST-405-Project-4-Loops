@@ -1,3 +1,4 @@
+
 /* =========================================================================
  * CST-405  ·  TOPIC 4  ·  Compiling Loops
  * FILE: ast.h   —   Phase 2 — Syntax analysis (the tree it builds)
@@ -47,6 +48,9 @@ typedef enum {
  * Add the loop node kinds to this enum:
  *   NODE_WHILE, NODE_FOR, NODE_BREAK
  * -------------------------------------------------------------- */
+    NODE_WHILE,  
+    NODE_FOR,        /* For loop statement */
+    NODE_BREAK,      /* Break statement */
     NODE_BLOCK,       /* Block statement { ... } */
     NODE_ARRAY_DECL,  /* Array declaration (e.g., int arr[10] or int arr[]) */
     NODE_ARRAY_INDEX, /* Array indexing (e.g., arr[i]) */
@@ -137,12 +141,26 @@ typedef struct ASTNode {
  * TODO (Topic 4)
  * A NODE_WHILE needs a condition and a body.
  * -------------------------------------------------------------- */
+
+        struct {
+            struct ASTNode* condition;
+            struct ASTNode* body;
+        } while_loop;
+
 /* --------------------------------------------------------------
  * TODO (Topic 4)
  * A NODE_FOR needs FOUR children: init, condition, update, body.
  * Any of them may be NULL, because every part of a for-header is
  * optional.  Decide now what "condition is NULL" should mean.
  * -------------------------------------------------------------- */
+        /* For loop initialization, condition, update, and body. */
+        struct {
+            struct ASTNode* init;
+            struct ASTNode* condition;
+            struct ASTNode* update;
+            struct ASTNode* body;
+        } for_loop;
+
         /* Block statement (NODE_BLOCK) */
         struct {
             struct ASTNode* stmt_list;  /* Statements in block */
@@ -193,6 +211,10 @@ ASTNode* createBlock(ASTNode* stmt_list);                       /* Create block 
  *   createFor(init, condition, update, body)
  *   createBreak()
  * -------------------------------------------------------------- */
+
+ASTNode* createWhile(ASTNode* condition, ASTNode* body);
+ASTNode* createFor(ASTNode* init, ASTNode* condition, ASTNode* update, ASTNode* body);  /* Create for loop */
+ASTNode* createBreak();  /* Create break statement */
 
 /* Array nodes */
 ASTNode* createArrayDecl(char* name, int size);                 /* Create array declaration */

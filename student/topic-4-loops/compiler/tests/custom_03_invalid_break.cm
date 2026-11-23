@@ -1,0 +1,20 @@
+
+/*
+ * Test: Break Outside a Loop
+ * Checks semantic error detection.
+ *
+ * Expected result:
+ * SEMANTIC ERROR: 'break' outside a loop
+ * Compilation should fail.
+ */
+
+int main() {
+    int count;
+
+    count = 5;
+    break;
+
+    print(count);
+
+    return 0;
+}

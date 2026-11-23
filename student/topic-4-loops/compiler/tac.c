@@ -94,6 +94,11 @@ void freeTemp(char* temp) {
  * newLabel(): hand out a fresh jump target — "L0", "L1", ...  Every
  * loop, branch and switch needs its own, and they must never repeat.
  * -------------------------------------------------------------- */
+char* newLabel() {
+    char* label = malloc(20);
+    sprintf(label, "L%d", tacList.labelCount++);
+    return label;
+}
 
 void printTempAllocatorState() {
     trace("\n┌──────────────────────────────────────────────────────────┐\n");
@@ -145,6 +150,9 @@ void appendOptimizedTAC(TACInstr* instr) {
  * between just jumps to whatever is on top.  That one stack is the whole
  * implementation of `break`, including the nested case.
  * -------------------------------------------------------------- */
+/* Stack of loop exit labels for nested break statements. */
+static char* breakLabels[100];
+static int breakTop = 0;
 
 /* Forward declarations */
 static void generateTACStmt(ASTNode* node);
@@ -212,6 +220,12 @@ char* generateTACExpr(ASTNode* node) {
  * TODO (Topic 4)
  * Map the six relational operator codes to their TAC opcodes.
  * -------------------------------------------------------------- */
+case '<': op = TAC_LT; break;
+case '>': op = TAC_GT; break;
+case 'l': op = TAC_LE; break;
+case 'g': op = TAC_GE; break;
+case 'e': op = TAC_EQ; break;
+case 'n': op = TAC_NE; break;
                 case 'u': op = TAC_NEG; break; /* unary - */
                 default:  op = TAC_ADD; break;
             }
@@ -337,6 +351,49 @@ static void generateTACStmt(ASTNode* node) {
  * Push Lend on the break-label stack around the BODY so that a
  * `break` inside knows where to jump, and pop it afterward.
  * -------------------------------------------------------------- */
+        case NODE_WHILE: {
+            char* start = newLabel();
+            char* end = newLabel();
+
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL, start));
+
+            char* condition = generateTACExpr(node->data.while_loop.condition);
+            appendTAC(createTAC(TAC_IF_FALSE, condition, end, NULL));
+            freeTemp(condition);
+
+            /* Save the current loop exit for break statements. */
+            breakLabels[breakTop++] = end;
+            generateTACStmt(node->data.while_loop.body);
+            breakTop--;
+
+            appendTAC(createTAC(TAC_GOTO, start, NULL, NULL));
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL, end));
+            break;
+        }
+        /* Generate labels and jumps for a for loop. */
+        case NODE_FOR: {
+            char* start = newLabel();
+            char* end = newLabel();
+
+            generateTACStmt(node->data.for_loop.init);
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL, start));
+
+            if (node->data.for_loop.condition) {
+                char* condition = generateTACExpr(node->data.for_loop.condition);
+                appendTAC(createTAC(TAC_IF_FALSE, condition, end, NULL));
+                freeTemp(condition);
+            }
+
+            /* Save the loop exit while generating the body. */
+            breakLabels[breakTop++] = end;
+            generateTACStmt(node->data.for_loop.body);
+            breakTop--;
+
+            generateTACStmt(node->data.for_loop.update);
+            appendTAC(createTAC(TAC_GOTO, start, NULL, NULL));
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL, end));
+            break;
+        }
         case NODE_BLOCK:
             generateTACStmtList(node->data.block.stmt_list);
             break;
@@ -374,6 +431,12 @@ static void generateTACStmt(ASTNode* node) {
  * stack.  If the stack is empty the semantic analyzer should already
  * have rejected the program, so this is a belt-and-braces check.
  * -------------------------------------------------------------- */
+        /* Jump to the exit label of the innermost loop. */
+        case NODE_BREAK:
+            if (breakTop > 0) {
+                appendTAC(createTAC(TAC_GOTO, breakLabels[breakTop - 1], NULL, NULL));
+            }
+            break;
         default:
             break;
     }
@@ -837,6 +900,18 @@ static TACList optimizePass(TACList* in) {
  * unreachable, which is what lets the next pass remove that too —
  * a small demonstration of why passes must run to a fixed point.
  * -------------------------------------------------------------- */
+        /* Replace constant branches with jumps or remove them. */
+        if ((c->op == TAC_IF_FALSE || c->op == TAC_IF_TRUE) && isConstantNumber(a1)) {
+            int trueCondition = atol(a1) != 0;
+            int takeBranch = (c->op == TAC_IF_TRUE) ? trueCondition : !trueCondition;
+            optStats.branch++;
+            changesThisPass++;
+            if (takeBranch) {
+                emit = createTAC(TAC_GOTO, a2, NULL, NULL);
+            } else {
+                continue;
+            }
+        }
 
         /* Nothing rewrote it: keep the instruction, with propagated operands. */
         if (!emit) emit = createTAC(c->op, a1, a2, c->result);

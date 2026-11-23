@@ -62,6 +62,8 @@ static int inFunction = 0;
  * statement being checked.  `break` is legal only when it is > 0.
  * -------------------------------------------------------------- */
 
+ static int breakDepth = 0;
+
 /* Initialize semantic analyzer */
 void initSemantic() {
     semInfo.errorCount = 0;
@@ -70,6 +72,7 @@ void initSemantic() {
     functionCount   = 0;
     currentFunction = NULL;
     inFunction      = 0;
+    breakDepth = 0;
 
     /* The built-in: print(x) */
     functions[functionCount].name       = strdup("print");
@@ -544,7 +547,21 @@ static void checkStmt(ASTNode* node) {
  * Note the condition is NOT inside the bracket: `break` in a loop
  * condition would make no sense.
  * -------------------------------------------------------------- */
-
+        case NODE_WHILE:
+            checkExpr(node->data.while_loop.condition);
+            breakDepth++;
+            checkStmt(node->data.while_loop.body);
+            breakDepth--;
+            break;
+        /* Check the for loop clauses and body. */
+        case NODE_FOR:
+            checkStmt(node->data.for_loop.init);
+            checkExpr(node->data.for_loop.condition);
+            breakDepth++;
+            checkStmt(node->data.for_loop.body);
+            breakDepth--;
+            checkStmt(node->data.for_loop.update);
+            break;
         case NODE_BLOCK:
             enterScope();
             checkStmtList(node->data.block.stmt_list);
@@ -571,6 +588,13 @@ static void checkStmt(ASTNode* node) {
  * smallest possible example of a CONTEXT-SENSITIVE rule — no grammar
  * can express it, which is exactly why semantic analysis exists.
  * -------------------------------------------------------------- */
+        /* Reject break outside a loop. */
+        case NODE_BREAK:
+            if (breakDepth == 0) {
+                fprintf(stderr, "SEMANTIC ERROR (line %d): 'break' outside a loop\n", node->lineno);
+                semInfo.errorCount++;
+            }
+            break;
         case NODE_ARRAY_DECL:
             if (isReservedName(node->data.array_decl.name)) {
                 reportReserved(node->data.array_decl.name, node->lineno);

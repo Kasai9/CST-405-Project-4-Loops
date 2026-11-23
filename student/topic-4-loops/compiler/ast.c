@@ -1,3 +1,4 @@
+
 /* =========================================================================
  * CST-405  ·  TOPIC 4  ·  Compiling Loops
  * FILE: ast.c   —   Phase 2 — Syntax analysis (the tree it builds)
@@ -165,6 +166,28 @@ ASTNode* createReturn(ASTNode* expr) {
  * their children.  Set node->lineno = yylineno in every constructor,
  * or later phases cannot report errors against the right line.
  * -------------------------------------------------------------- */
+
+ASTNode* createWhile(ASTNode* condition, ASTNode* body) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_WHILE;
+    node->lineno = yylineno;
+    node->data.while_loop.condition = condition;
+    node->data.while_loop.body = body;
+    return node;
+}
+
+/* Create a for loop node. */
+ASTNode* createFor(ASTNode* init, ASTNode* condition, ASTNode* update, ASTNode* body) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_FOR;
+    node->lineno = yylineno;
+    node->data.for_loop.init = init;
+    node->data.for_loop.condition = condition;
+    node->data.for_loop.update = update;
+    node->data.for_loop.body = body;
+    return node;
+}
+
 /* Create a block statement node */
 ASTNode* createBlock(ASTNode* stmt_list) {
     ASTNode* node = malloc(sizeof(ASTNode));
@@ -202,6 +225,14 @@ ASTNode* createArrayParam(char* name) {
  * `break` is entirely about WHERE it appears, and tac.c resolves that
  * later using its break-label stack.
  * -------------------------------------------------------------- */
+/* Create a break statement node. */
+ASTNode* createBreak() {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_BREAK;
+    node->lineno = yylineno;
+    return node;
+}
+
 /* Create an array indexing node */
 ASTNode* createArrayIndex(char* name, ASTNode* index) {
     ASTNode* node = malloc(sizeof(ASTNode));
@@ -315,6 +346,27 @@ void printAST(ASTNode* node, int level) {
  * Print NODE_WHILE and NODE_FOR.  Label each of the for-loop's four
  * children so a reader can tell init from update at a glance.
  * -------------------------------------------------------------- */
+        case NODE_WHILE:
+            printf("WHILE\n");
+            printAST(node->data.while_loop.condition, level + 1);
+            printAST(node->data.while_loop.body, level + 1);
+            break;
+        /* Display the four parts of a for loop. */
+        case NODE_FOR:
+            printf("FOR\n");
+            for (int i = 0; i < level + 1; i++) printf("  ");
+            printf("INIT:\n");
+            printAST(node->data.for_loop.init, level + 2);
+            for (int i = 0; i < level + 1; i++) printf("  ");
+            printf("CONDITION:\n");
+            printAST(node->data.for_loop.condition, level + 2);
+            for (int i = 0; i < level + 1; i++) printf("  ");
+            printf("UPDATE:\n");
+            printAST(node->data.for_loop.update, level + 2);
+            for (int i = 0; i < level + 1; i++) printf("  ");
+            printf("BODY:\n");
+            printAST(node->data.for_loop.body, level + 2);
+            break;
         case NODE_BLOCK:
             printf("BLOCK\n");
             printAST(node->data.block.stmt_list, level + 1);
@@ -338,5 +390,9 @@ void printAST(ASTNode* node, int level) {
  * TODO (Topic 4)
  * Print NODE_BREAK — one line, no children.
  * -------------------------------------------------------------- */
+        /* Display a break statement. */
+        case NODE_BREAK:
+            printf("BREAK\n");
+            break;
     }
 }
